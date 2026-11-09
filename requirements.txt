@@ -11,9 +11,9 @@ sqlalchemy==2.1.8
 psycopg[binary]==3.3.8
 alembic==1.20.1
 
-# Frontend (httpx is also the FastAPI TestClient transport)
+# Frontend (httpx2 is also the FastAPI/Starlette TestClient transport)
 streamlit==1.67.0
-httpx==0.28.1
+httpx2==2.16.0
 
 # Tests
 pytest==9.2.0

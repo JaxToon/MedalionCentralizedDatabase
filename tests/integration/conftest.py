@@ -12,10 +12,13 @@ from uuid import uuid4
 import pytest
 from alembic import command
 from alembic.config import Config
+from fastapi.testclient import TestClient
 from sqlalchemy import URL, Connection, Engine, create_engine, text
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.db.session import get_session
+from app.main import create_app
 
 ALEMBIC_INI = Path(__file__).resolve().parents[2] / "alembic.ini"
 MAINTENANCE_DB = "postgres"
@@ -74,3 +77,12 @@ def session(engine: Engine) -> Iterator[Session]:
         finally:
             session.close()
             transaction.rollback()
+
+
+@pytest.fixture
+def client(session: Session) -> Iterator[TestClient]:
+    """API client whose requests share the test's rolled-back session."""
+    app = create_app()
+    app.dependency_overrides[get_session] = lambda: session
+    with TestClient(app) as test_client:
+        yield test_client
