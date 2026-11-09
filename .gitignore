@@ -1,0 +1,27 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Data lake files (synthetic data, generated at runtime)
+storage/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+.ruff_cache/
+.mypy_cache/
+
+# Tooling / local state
+.scuba/
+.claude/settings.local.json
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

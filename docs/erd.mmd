@@ -1,0 +1,238 @@
+erDiagram
+    ORGANIZATION_UNIT ||--o{ APP_USER : contains
+    ORGANIZATION_UNIT ||--o{ DATA_DOMAIN : sponsors
+    APP_USER ||--o{ USER_ROLE : receives
+    ROLE ||--o{ USER_ROLE : assigned
+    APP_USER ||--o{ DATA_DOMAIN : owns
+    APP_USER ||--o{ DATA_DOMAIN : stewards
+    DATA_DOMAIN ||--o{ DATASET : contains
+    APP_USER ||--o{ DATASET : submits
+    APP_USER ||--o{ DATASET : owns
+    DATA_CLASSIFICATION ||--o{ DATASET : classifies
+    DATASET ||--o{ DATASET_VERSION : versions
+    APP_USER ||--o{ DATASET_VERSION : uploads
+    DATASET_VERSION ||--o{ DATASET_COLUMN : defines
+    DATASET_VERSION ||--o{ STORAGE_OBJECT : materializes
+    DATASET ||--o{ INGESTION_JOB : configured_for
+    INGESTION_JOB ||--o{ INGESTION_RUN : executes
+    DATASET_VERSION ||--o{ INGESTION_RUN : ingested_as
+    DATASET_VERSION ||--o{ PIPELINE_RUN : processed_by
+    PIPELINE_DEFINITION ||--o{ PIPELINE_RUN : defines
+    PIPELINE_RUN ||--o{ QUALITY_RESULT : produces
+    QUALITY_RULE ||--o{ QUALITY_RESULT : evaluated_by
+    STORAGE_OBJECT ||--o{ DATA_LINEAGE : source_object
+    STORAGE_OBJECT ||--o{ DATA_LINEAGE : target_object
+    PIPELINE_RUN ||--o{ DATA_LINEAGE : creates
+    APP_USER ||--o{ ACCESS_REQUEST : requests
+    DATASET ||--o{ ACCESS_REQUEST : requested_for
+    ACCESS_REQUEST ||--o{ APPROVAL : reviewed_by
+    APP_USER ||--o{ APPROVAL : decides
+    ACCESS_REQUEST ||--o{ ACCESS_GRANT : results_in
+    APP_USER ||--o{ ACCESS_GRANT : receives
+    DATASET ||--o{ ACCESS_GRANT : grants_access_to
+    APP_USER ||--o{ AUDIT_LOG : performs
+
+    ORGANIZATION_UNIT {
+      uuid unit_id PK
+      varchar unit_code UK
+      varchar unit_name
+      varchar status
+    }
+    APP_USER {
+      uuid user_id PK
+      uuid unit_id FK
+      varchar username UK
+      varchar email UK
+      varchar display_name
+      varchar status
+      timestamp created_at
+    }
+    ROLE {
+      uuid role_id PK
+      varchar role_code UK
+      varchar role_name
+    }
+    USER_ROLE {
+      uuid user_id PK, FK
+      uuid role_id PK, FK
+      uuid assigned_by FK
+      timestamp assigned_at
+    }
+    DATA_DOMAIN {
+      uuid domain_id PK
+      uuid unit_id FK
+      uuid owner_user_id FK
+      uuid steward_user_id FK
+      varchar domain_code UK
+      varchar domain_name
+      varchar status
+    }
+    DATA_CLASSIFICATION {
+      uuid classification_id PK
+      varchar classification_code UK
+      varchar label
+      int sensitivity_level
+      text description
+    }
+    DATASET {
+      uuid dataset_id PK
+      uuid domain_id FK
+      uuid classification_id FK
+      uuid submitted_by FK
+      uuid owner_user_id FK
+      varchar dataset_code UK
+      varchar dataset_name
+      text description
+      varchar source_system
+      varchar file_format
+      varchar refresh_frequency
+      text business_purpose
+      varchar lifecycle_status
+      timestamp created_at
+      timestamp updated_at
+    }
+    DATASET_VERSION {
+      uuid dataset_version_id PK
+      uuid dataset_id FK
+      uuid uploaded_by FK
+      int version_number
+      varchar source_filename
+      varchar schema_fingerprint
+      bigint source_size_bytes
+      varchar source_checksum
+      bigint inferred_row_count
+      varchar status
+      timestamp uploaded_at
+      timestamp validated_at
+    }
+    DATASET_COLUMN {
+      uuid column_id PK
+      uuid dataset_version_id FK
+      varchar column_name
+      varchar logical_name
+      varchar data_type
+      int ordinal_position
+      boolean nullable
+      boolean sensitive_flag
+      varchar masking_rule
+    }
+    STORAGE_OBJECT {
+      uuid storage_object_id PK
+      uuid dataset_version_id FK
+      varchar layer
+      varchar object_uri
+      varchar file_format
+      bigint size_bytes
+      bigint row_count
+      varchar checksum
+      varchar status
+      timestamp created_at
+    }
+    INGESTION_JOB {
+      uuid ingestion_job_id PK
+      uuid dataset_id FK
+      varchar ingestion_method
+      varchar schedule_type
+      boolean is_active
+      jsonb configuration
+      uuid created_by FK
+      timestamp created_at
+    }
+    INGESTION_RUN {
+      uuid ingestion_run_id PK
+      uuid ingestion_job_id FK
+      uuid dataset_version_id FK
+      varchar status
+      bigint records_received
+      bigint records_accepted
+      bigint records_rejected
+      text error_summary
+      timestamp started_at
+      timestamp completed_at
+    }
+    PIPELINE_DEFINITION {
+      uuid pipeline_definition_id PK
+      varchar pipeline_code UK
+      varchar pipeline_name
+      varchar source_layer
+      varchar target_layer
+      varchar pipeline_version
+      boolean is_active
+    }
+    PIPELINE_RUN {
+      uuid pipeline_run_id PK
+      uuid dataset_version_id FK
+      uuid pipeline_definition_id FK
+      varchar status
+      bigint input_rows
+      bigint output_rows
+      text error_summary
+      timestamp started_at
+      timestamp completed_at
+    }
+    QUALITY_RULE {
+      uuid quality_rule_id PK
+      uuid dataset_id FK
+      varchar rule_code
+      varchar rule_name
+      varchar rule_type
+      jsonb rule_configuration
+      varchar severity
+      boolean is_active
+    }
+    QUALITY_RESULT {
+      uuid quality_result_id PK
+      uuid pipeline_run_id FK
+      uuid quality_rule_id FK
+      bigint rows_checked
+      bigint failed_rows
+      varchar result_status
+      text result_summary
+      timestamp evaluated_at
+    }
+    DATA_LINEAGE {
+      uuid lineage_id PK
+      uuid pipeline_run_id FK
+      uuid source_storage_object_id FK
+      uuid target_storage_object_id FK
+      varchar transformation_name
+      timestamp created_at
+    }
+    ACCESS_REQUEST {
+      uuid access_request_id PK
+      uuid dataset_id FK
+      uuid requester_user_id FK
+      text business_purpose
+      varchar requested_permission
+      timestamp requested_at
+      timestamp requested_until
+      varchar status
+    }
+    APPROVAL {
+      uuid approval_id PK
+      uuid access_request_id FK
+      uuid approver_user_id FK
+      varchar decision
+      text comments
+      timestamp decided_at
+    }
+    ACCESS_GRANT {
+      uuid access_grant_id PK
+      uuid access_request_id FK
+      uuid dataset_id FK
+      uuid grantee_user_id FK
+      varchar permission
+      timestamp valid_from
+      timestamp valid_until
+      timestamp revoked_at
+    }
+    AUDIT_LOG {
+      uuid audit_log_id PK
+      uuid actor_user_id FK
+      varchar action
+      varchar entity_type
+      uuid entity_id
+      varchar outcome
+      jsonb details
+      timestamp occurred_at
+    }
