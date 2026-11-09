@@ -13,7 +13,12 @@ from datetime import UTC, datetime
 request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
 
 # Attributes every LogRecord has; anything else on a record came from `extra=`.
-_STANDARD_ATTRS = frozenset(vars(logging.makeLogRecord({}))) | {"message", "asctime"}
+# `color_message` is uvicorn's ANSI-coloured copy of the message, meant for terminals.
+_STANDARD_ATTRS = frozenset(vars(logging.makeLogRecord({}))) | {
+    "message",
+    "asctime",
+    "color_message",
+}
 
 
 class JsonFormatter(logging.Formatter):
@@ -45,13 +50,17 @@ class _JsonHandler(logging.StreamHandler):
 
 
 def configure_logging(level: str) -> None:
-    """Route the root logger (and uvicorn's loggers) through one JSON handler. Idempotent."""
+    """Route the root logger, and uvicorn's server logs, through one JSON handler. Idempotent.
+
+    uvicorn's access log is switched off: the app's "app.request" log replaces it
+    and also carries the request id and actor.
+    """
     root = logging.getLogger()
     for handler in [h for h in root.handlers if isinstance(h, _JsonHandler)]:
         root.removeHandler(handler)
     root.addHandler(_JsonHandler())
     root.setLevel(level.upper())
-    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+    for name, propagate in (("uvicorn", True), ("uvicorn.error", True), ("uvicorn.access", False)):
         uvicorn_logger = logging.getLogger(name)
         uvicorn_logger.handlers.clear()
-        uvicorn_logger.propagate = True
+        uvicorn_logger.propagate = propagate
