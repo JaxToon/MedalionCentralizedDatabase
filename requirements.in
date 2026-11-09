@@ -1,0 +1,20 @@
+# Direct dependencies for the api and frontend image and for local test runs.
+# requirements.txt is the hash-pinned lock compiled from this file; see README
+# ("Updating dependencies"). Edit this file, never the lock.
+
+# API
+fastapi==0.162.2
+uvicorn==0.54.0
+pydantic-settings==2.16.2
+
+# Database
+sqlalchemy==2.1.8
+psycopg[binary]==3.3.8
+alembic==1.20.1
+
+# Frontend (httpx2 is also the FastAPI/Starlette TestClient transport)
+streamlit==1.67.0
+httpx2==2.16.0
+
+# Tests
+pytest==9.2.0

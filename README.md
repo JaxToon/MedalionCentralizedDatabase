@@ -78,6 +78,19 @@ uv pip install -r requirements.txt   # installs into ./.venv
 
 Run pytest from the repository root so it picks up `.env`.
 
+### Updating dependencies
+
+`requirements.in` lists the direct dependencies. `requirements.txt` is the lock compiled from
+it: every package, transitive ones included, pinned with hashes, and the Docker image installs
+it with `pip install --require-hashes`. To change a dependency, edit `requirements.in` and
+re-compile the lock (never edit `requirements.txt` by hand):
+
+```bash
+uv pip compile requirements.in --universal --python-version 3.11 --generate-hashes -o requirements.txt
+```
+
+Add `--upgrade` to also move unpinned transitive dependencies to their latest versions.
+
 ### Troubleshooting: port 5432 vs 5433
 
 The Compose database is published on host port **5433**, not the PostgreSQL default 5432,
