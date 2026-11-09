@@ -1,29 +1,37 @@
-name: lakehouse
+# No fixed project name: Compose derives it from the checkout directory, so each
+# checkout gets its own containers, network, image tag and database volume.
+#
+# Every published port binds to 127.0.0.1: nothing in this stack is reachable from
+# outside the host. The demo database user is a superuser and the API trusts a
+# mock auth header, so neither may ever face a network.
 
 services:
   db:
-    image: postgres:16
+    image: postgres:16.15
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
     ports:
       # Host 5433: a native PostgreSQL commonly owns 5432 on the host.
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      # Over TCP: during first boot the entrypoint runs a temporary server that only
+      # listens on the unix socket, so a socket probe would report ready too early.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s
       timeout: 5s
       retries: 10
 
   api:
+    # The only service that builds; frontend runs the same image.
     build: .
-    image: lakehouse-app
-    command: >
-      sh -c "alembic upgrade head &&
-             exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    image: ${COMPOSE_PROJECT_NAME}-app
+    restart: unless-stopped
+    # Default command (Dockerfile): migrate, then serve on 8000.
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -32,7 +40,7 @@ services:
       POSTGRES_PORT: "5432"
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./storage:/app/storage
     depends_on:
@@ -46,8 +54,8 @@ services:
       start_period: 15s
 
   frontend:
-    build: .
-    image: lakehouse-app
+    image: ${COMPOSE_PROJECT_NAME}-app
+    restart: unless-stopped
     command: >
       streamlit run frontend/Home.py
       --server.address 0.0.0.0 --server.port 8501
@@ -55,10 +63,16 @@ services:
     environment:
       API_BASE_URL: http://api:8000
     ports:
-      - "8501:8501"
+      - "127.0.0.1:8501:8501"
     depends_on:
       api:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
 
 volumes:
   pgdata:
