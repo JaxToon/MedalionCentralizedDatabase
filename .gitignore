@@ -21,7 +21,7 @@ htmlcov/
 
 # Tooling / local state
 .scuba/
-.claude/settings.local.json
+.claude/
 .vscode/
 .idea/
 .DS_Store
