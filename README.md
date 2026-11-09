@@ -18,3 +18,69 @@ Streamlit · FastAPI · PostgreSQL · DuckDB + PyArrow + Pandas · Parquet · Do
 ## Status
 
 Work in progress. Being built milestone by milestone (see PRD section 19).
+Milestone 1 (Foundation) is in place: Docker Compose stack, PostgreSQL with migrations,
+FastAPI, a Streamlit shell, and seeded demo users.
+
+## Run it locally
+
+### Prerequisites
+
+- Docker Desktop (on Windows, with the WSL2 backend) and Docker Compose v2
+- Git
+- For running tests on the host: Python 3.11 (and optionally [uv](https://docs.astral.sh/uv/))
+
+### Start the stack
+
+```bash
+cp .env.example .env            # placeholder local credentials; edit if you like
+docker compose up -d --build    # db, api (runs migrations on start), frontend
+docker compose exec api python -m scripts.seed_demo_data   # safe to re-run
+```
+
+Then open <http://localhost:8501> and pick a demo user in the sidebar.
+
+| Service | URL |
+|---|---|
+| Streamlit UI | <http://localhost:8501> |
+| API | <http://localhost:8000> (OpenAPI docs at `/docs`) |
+| API health | <http://localhost:8000/health> |
+| PostgreSQL | `localhost:5433` |
+
+The API uses mock authentication: send `X-Demo-User: <username>` (for example
+`sari.submitter`) and the API acts as that seeded user.
+
+```bash
+curl http://localhost:8000/api/v1/demo-users
+curl -H "X-Demo-User: sari.submitter" http://localhost:8000/api/v1/me
+```
+
+Stop with `docker compose down`; add `-v` to also delete the database volume.
+
+### Connect with DBeaver (or any SQL client)
+
+New PostgreSQL connection:
+
+- Host `localhost`, port **5433**
+- Database, user and password: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` from your `.env`
+
+### Run the tests
+
+Tests run on the host against the Compose PostgreSQL on `localhost:5433`. Integration tests
+create a throwaway database (`lakehouse_test_<random>`) and drop it afterwards; they never
+touch the dev database.
+
+```bash
+docker compose up -d db
+uv venv --python 3.11 .venv          # or: python -m venv .venv, then pip install -r requirements.txt
+uv pip install -r requirements.txt   # installs into ./.venv
+.venv/Scripts/python -m pytest       # Windows; on macOS/Linux: .venv/bin/python -m pytest
+```
+
+Run pytest from the repository root so it picks up `.env`.
+
+### Troubleshooting: port 5432 vs 5433
+
+The Compose database is published on host port **5433**, not the PostgreSQL default 5432,
+because a natively installed PostgreSQL often already owns 5432. If DBeaver or the tests
+connect to 5432 you are talking to that other server (wrong database, wrong credentials).
+Use `localhost:5433` from the host. Inside Compose, the api reaches the database at `db:5432`.
